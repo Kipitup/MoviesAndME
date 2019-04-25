@@ -17,8 +17,7 @@ class Search extends React.Component {
 	}
 
 	_displayDetailForFilm = (idFilm) => {
-		console.log("Display film with id " + idFilm)
-		this.props.navigation.navigate("FilmDetail", { idFilm: idFilm })		// seulement idFilm
+		this.props.navigation.navigate("FilmDetail", { idFilm: idFilm })		// only idFilm | Since we add Search to our StackNavigator, a navigation object was add to the props of Search
 	}
 
 	_displayLoading() { 														//underscore pour indiquer que la méthode est privée. this._displayLoading => OK | search._loadFilms => not OK even if it's working
@@ -49,11 +48,11 @@ class Search extends React.Component {
 		if (this.searchedText.length > 0) {
 			this.setState({ isLoading: true })
 			getFilmsFromApiWithSearchedText(this.searchedText,
-			this.page + 1).then(data => { 										//Can we put 2 .then ?
+			this.page + 1).then(data => {
 				this.page = data.page
 				this.totalPages = data.total_pages
 				this.setState({
-					films: [ ...this.state.films, ...data.results ],			//equal -> films: this.state.films.concat(data.results)
+					films: [ ...this.state.films, ...data.results ],			//equal -> films: this.state.films.concat(data.results) | ''...something' create a copie of an object
 					isLoading: false
 				})
 			})
@@ -78,11 +77,12 @@ class Search extends React.Component {
 	         	renderItem={({item}) => <FilmItem film={item} displayDetailForFilm=
 				{this._displayDetailForFilm} />}
 				onEndReachedThreshold={0.5}
-			    onEndReached={() => {
-			      if (this.page < this.totalPages) {
-					  this._loadFilms()
-				  }
-			    }}
+				onEndReached={this.page < this.totalPages ? this._loadFilms : null}
+				// onEndReached={() => {
+				//   if (this.page < this.totalPages) {
+				// 	  this._loadFilms()
+				//   }
+				// }}
 			/>
 			{this._displayLoading()}
 																				{/*Cette fonction peut être mise n'importe ou ds le render. Les fonctions appelées dans le render doivent
