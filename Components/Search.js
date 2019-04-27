@@ -2,6 +2,7 @@ import React from 'react'
 import FilmItem from './FilmItem'
 import { getFilmsFromApiWithSearchedText } from '../API/TMDBApi'
 import { StyleSheet, View, TextInput, Button, Text, FlatList, ActivityIndicator } from 'react-native'
+import { connect } from 'react-redux'
 
 class Search extends React.Component {
 
@@ -73,9 +74,15 @@ class Search extends React.Component {
 																				{/*Same as onSubmitEditing*/}
 	    	<FlatList															//A performant interface for rendering simple, flat lists:
 	         	data={this.state.films}
+				extraData={this.props.favoritesFilm}
 	         	keyExtractor={(item) => item.id.toString()}						//keyExtractor tells the list to use the ids for the react keys instead of the default key property.
-	         	renderItem={({item}) => <FilmItem film={item} displayDetailForFilm=
-				{this._displayDetailForFilm} />}
+	         	renderItem={({item}) =>
+					<FilmItem
+						film={item}
+						isFilmFavorite={(this.props.favoritesFilm.findIndex(film => film.id === item.id) !== -1) ? true : false}
+						displayDetailForFilm={this._displayDetailForFilm}
+					/>
+				}
 				onEndReachedThreshold={0.5}
 				onEndReached={this.page < this.totalPages ? this._loadFilms : null}
 				// onEndReached={() => {
@@ -115,4 +122,10 @@ const styles = StyleSheet.create({
 	}
 })
 
-export default Search
+const mapStateToProps = (state) => {
+  return {
+	  favoritesFilm: state.favoritesFilm
+  }
+}
+
+export default connect(mapStateToProps)(Search)

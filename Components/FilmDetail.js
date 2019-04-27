@@ -1,8 +1,9 @@
 import React from 'react'
-import { StyleSheet, View, Text, ActivityIndicator, ScrollView, Image } from 'react-native'
+import { StyleSheet, View, Text, ActivityIndicator, ScrollView, Image, Button, TouchableOpacity } from 'react-native'
 import { getFilmDetailFromApi, getImageFromApi } from '../API/TMDBApi'
 import moment from 'moment'
 import numeral from 'numeral'
+import { connect } from 'react-redux'
 
 class FilmDetail extends React.Component {
 	// constructor(props) {
@@ -43,6 +44,10 @@ class FilmDetail extends React.Component {
 		})
 	}
 
+	componentDidUpdate() {
+		console.log("componentDidUpdate : ")
+		console.log(this.props.favoritesFilm)
+	}
 
 	_displayLoading() {
 		if (this.state.isLoading) {
@@ -54,6 +59,24 @@ class FilmDetail extends React.Component {
 		}
 	}
 
+	_toggleFavorite() {
+		const action = { type: "TOGGLE_FAVORITE", value: this.state.film }		//Declaration of an Object
+		this.props.dispatch(action)
+	}
+
+	_displayFavoriteImage() {
+		var sourceImage = require('../Images/ic_favorite_border.png')			//require is used to statically include image & others.
+		if (this.props.favoritesFilm.findIndex(item => item.id === this.state.film.id) !== -1) {
+			sourceImage = require('../Images/ic_favorite.png')
+		}
+		return (
+			<Image
+				style={styles.favorite_image}
+				source={sourceImage}
+			/>
+		)
+	}
+
 	_displayFilm() {
 		const { film } = this.state												//destructuring an object allows us to extrct multiple pieces of data from array or object and assign them to their own variables.
 		return film && (														//instead of if (film != undefined) { return.....}. When if is false it will return undefined anyway
@@ -63,6 +86,11 @@ class FilmDetail extends React.Component {
 		    		source={{uri: getImageFromApi(film.backdrop_path)}}
 				/>
 				<Text style={styles.title}>{film.title}</Text>
+				<TouchableOpacity
+				    style={styles.favorite_container}
+				    onPress={() => this._toggleFavorite()}>
+				    {this._displayFavoriteImage()}
+				</TouchableOpacity>
 				<Text style={styles.overview}>{film.overview}</Text>
 				<Text style={styles.film_info}>
 					Sorti le {moment(film.release_date).format('DD/MM/YYYY')}
@@ -100,6 +128,13 @@ class FilmDetail extends React.Component {
 const styles = StyleSheet.create({
 	main_container: {
 		flex: 1,
+	},
+	favorite_container: {
+		alignItems: 'center'
+	},
+	favorite_image: {
+		width: 40,
+		height: 40
 	},
 	loading_container: {
 		position: 'absolute',
@@ -142,4 +177,10 @@ const styles = StyleSheet.create({
 	}
 })
 
-export default FilmDetail
+const mapStateToProps = (state) => {
+  return {
+	  favoritesFilm: state.favoritesFilm
+  }
+}
+
+export default connect(mapStateToProps)(FilmDetail)
