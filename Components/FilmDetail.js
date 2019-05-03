@@ -1,22 +1,45 @@
 import React from 'react'
-import { StyleSheet, View, Text, ActivityIndicator, ScrollView, Image, Button, TouchableOpacity } from 'react-native'
+import { StyleSheet, View, Text, ActivityIndicator, ScrollView, Image, Button, TouchableOpacity, Share, Platform } from 'react-native'
 import { getFilmDetailFromApi, getImageFromApi } from '../API/TMDBApi'
 import moment from 'moment'
 import numeral from 'numeral'
 import { connect } from 'react-redux'
+import EnlargeShrink from '../Animations/EnlargeShrink'
 
 class FilmDetail extends React.Component {
-	// constructor(props) {
-	// 	super(props)
-	// 	this.state = {
-	// 		film: undefined,
-	// 		isLoading: true
-	// 	}
-	// }
 
-	state = {
-		film: undefined,
-		isLoading: true
+	static navigationOptions = ({ navigation }) => {
+		const { params } = navigation.state
+		if (params.film && Platform.OS === 'ios') {
+			return {
+				headerRight: (
+					<TouchableOpacity
+						style={styles.share_touchable_headerrightbutton}
+						onPress={() => params.shareFilm()}>
+						<Image
+							style={styles.share_image}
+							source={require('../Images/ic_share.png')}/>
+					</TouchableOpacity>
+				),
+			};
+		}
+	};
+
+	constructor(props) {
+		super(props)
+		this.state = {
+			film: undefined,
+			isLoading: true
+		}
+		this._toggleFavorite = this._toggleFavorite.bind(this)					//change
+		this._shareFilm = this._shareFilm.bind(this)
+	}
+
+	_updateNavigationParam() {
+		this.props.navigation.setParams({
+			film: this.state.film,
+			shareFilm: this._shareFilm
+		});
 	}
 
 	// componentDidMount() {
@@ -28,25 +51,20 @@ class FilmDetail extends React.Component {
 	// 	})
 	// }
 
-	// async componentDidMount() {
-	// 	const data = await getFilmDetailFromApi(this.props.navigation.state.params.idFilm);
-	//
-	// 	this.setState({
-	// 	  film: data,
-	// 	  isLoading: false
-	// 	})
-	// }
-
 	async componentDidMount() {
+		const favoriteFilmIndex = this.props.favoritesFilm.findIndex(
+			item => item.id === this.props.navigation.state.params.idFilm)
+		if (favoriteFilmIndex !== -1) {
+			this.setState({
+				film: this.props.favoritesFilm[favoriteFilmIndex]
+			}, () => this._updateNavigationParam())
+			return
+		}
+		this.setState({ isLoading: true })
 		this.setState({
-		  film: await getFilmDetailFromApi(this.props.navigation.state.params.idFilm), //when 'await' always put 'async'| await replace '.then', it'll wait for the return. async function answer
-		  isLoading: false														//		the problem of asynchrome. Before you add to use callback to differ the execution of instructions. better the Promise ?
-		})
-	}
-
-	componentDidUpdate() {
-		console.log("componentDidUpdate : ")
-		console.log(this.props.favoritesFilm)
+			film: await getFilmDetailFromApi(this.props.navigation.state.params.idFilm), //when 'await' always put 'async'| await replace '.then', it'll wait for the return. async function answer
+			isLoading: false													//		the problem of asynchrome. Before you add to use callback to differ the execution of instructions. better the Promise ?
+		}, () => this._updateNavigationParam())
 	}
 
 	_displayLoading() {
@@ -65,20 +83,45 @@ class FilmDetail extends React.Component {
 	}
 
 	_displayFavoriteImage() {
-		var sourceImage = require('../Images/ic_favorite_border.png')			//require is used to statically include image & others.
-		if (this.props.favoritesFilm.findIndex(item => item.id === this.state.film.id) !== -1) {
-			sourceImage = require('../Images/ic_favorite.png')
+      var sourceImage = require('../Images/ic_favorite_border.png')
+      var shouldEnlarge = false // Par défaut, si le film n'est pas en favoris, on veut qu'au clic sur le bouton, celui-ci s'agrandisse => shouldEnlarge à true
+      if (this.props.favoritesFilm.findIndex(item => item.id === this.state.film.id) !== -1) {
+        sourceImage = require('../Images/ic_favorite.png')
+        shouldEnlarge = true // Si le film est dans les favoris, on veut qu'au clic sur le bouton, celui-ci se rétrécisse => shouldEnlarge à false
+      }
+      return (
+        <EnlargeShrink
+          shouldEnlarge={shouldEnlarge}>
+          <Image
+            style={styles.favorite_image}
+            source={sourceImage}
+          />
+        </EnlargeShrink>
+      )
+    }
+
+	_shareFilm() {
+		const { film } = this.state
+		Share.share({ title: film.title, message: film.overview })
+	}
+
+	_displayFloatingActionButton() {
+		const { film } = this.state
+		if (film && Platform.OS === 'android') {
+			return (
+				<TouchableOpacity
+					style={styles.share_touchable_floatingactionbutton}
+					onPress={() => this._shareFilm()}>
+					<Image
+						style={styles.share_image}
+						source={require('../Images/ic_share.png')} />
+				</TouchableOpacity>
+			)
 		}
-		return (
-			<Image
-				style={styles.favorite_image}
-				source={sourceImage}
-			/>
-		)
 	}
 
 	_displayFilm() {
-		const { film } = this.state												//destructuring an object allows us to extrct multiple pieces of data from array or object and assign them to their own variables.
+		const { film } = this.state												//destructuring an object allows us to extract multiple pieces of data from array or object and assign them to their own variables.
 		return film && (														//instead of if (film != undefined) { return.....}. When if is false it will return undefined anyway
 			<ScrollView style={styles.scrollview_container}>
 				<Image
@@ -120,6 +163,7 @@ class FilmDetail extends React.Component {
 			<View style={styles.main_container}>
 				{this._displayLoading()}
 				{this._displayFilm()}
+				{this._displayFloatingActionButton()}
 			</View>
 		)
 	}
@@ -133,8 +177,9 @@ const styles = StyleSheet.create({
 		alignItems: 'center'
 	},
 	favorite_image: {
-		width: 40,
-		height: 40
+		flex: 1,
+		width: null,
+		height: null
 	},
 	loading_container: {
 		position: 'absolute',
@@ -174,6 +219,24 @@ const styles = StyleSheet.create({
 		marginLeft: 5,
 	    marginRight: 5,
 	    marginTop: 5
+	},
+	share_touchable_floatingactionbutton: {
+		position: 'absolute',
+		width: 60,
+		height: 60,
+		right: 30,
+		bottom: 30,
+		borderRadius: 30,
+		backgroundColor: '#e91e63',
+		justifyContent: 'center',
+		alignItems: 'center'
+	},
+	share_image: {
+		width: 30,
+		height: 30
+	},
+	share_touchable_headerrightbutton: {
+		marginRight: 8
 	}
 })
 

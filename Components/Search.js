@@ -1,5 +1,6 @@
 import React from 'react'
 import FilmItem from './FilmItem'
+import FilmList from './FilmList'
 import { getFilmsFromApiWithSearchedText } from '../API/TMDBApi'
 import { StyleSheet, View, TextInput, Button, Text, FlatList, ActivityIndicator } from 'react-native'
 import { connect } from 'react-redux'
@@ -15,10 +16,7 @@ class Search extends React.Component {
 			films: [],															//		Avoid copying props into state!
 			isLoading: false
 		};
-	}
-
-	_displayDetailForFilm = (idFilm) => {
-		this.props.navigation.navigate("FilmDetail", { idFilm: idFilm })		// only idFilm | Since we add Search to our StackNavigator, a navigation object was add to the props of Search
+		this._loadFilms = this._loadFilms.bind(this)							//Binding 'this', the Search context to the LoadFilms function.
 	}
 
 	_displayLoading() { 														//underscore pour indiquer que la méthode est privée. this._displayLoading => OK | search._loadFilms => not OK even if it's working
@@ -43,6 +41,11 @@ class Search extends React.Component {
 		}, () => {																//		React does not guarantee that the state changes are applied immediately. (printf like)
 			this._loadFilms()													//		This makes reading this.state right after calling setState() a potential pitfall.
 		})																		//		Instead, use componentDidUpdate or a setState callback (setState(updater, callback)) like here.
+	}
+
+	_displayDetailForFilm = (idFilm) => {
+		console.log("Display film with id " + idFilm)							//What ??
+		this.props.navigation.navigate("FilmDetail", { idFilm: idFilm })
 	}
 
 	_loadFilms() {
@@ -71,25 +74,13 @@ class Search extends React.Component {
 				onSubmitEditing={() => this._searchFilms()}						//Callback that is called when the text input's submit button is pressed
 			/>
 	    	<Button title='Rechercher' onPress={() => this._searchFilms()}/>
-																				{/*Same as onSubmitEditing*/}
-	    	<FlatList															//A performant interface for rendering simple, flat lists:
-	         	data={this.state.films}
-				extraData={this.props.favoritesFilm}
-	         	keyExtractor={(item) => item.id.toString()}						//keyExtractor tells the list to use the ids for the react keys instead of the default key property.
-	         	renderItem={({item}) =>
-					<FilmItem
-						film={item}
-						isFilmFavorite={(this.props.favoritesFilm.findIndex(film => film.id === item.id) !== -1) ? true : false}
-						displayDetailForFilm={this._displayDetailForFilm}
-					/>
-				}
-				onEndReachedThreshold={0.5}
-				onEndReached={this.page < this.totalPages ? this._loadFilms : null}
-				// onEndReached={() => {
-				//   if (this.page < this.totalPages) {
-				// 	  this._loadFilms()
-				//   }
-				// }}
+	    	<FilmList
+				films={this.state.films}
+				navigation={this.props.navigation}
+				loadFilms={this._loadFilms}
+				page={this.page}
+				totalPages={this.totalPages}
+				favoriteList={false}
 			/>
 			{this._displayLoading()}
 																				{/*Cette fonction peut être mise n'importe ou ds le render. Les fonctions appelées dans le render doivent
@@ -122,10 +113,4 @@ const styles = StyleSheet.create({
 	}
 })
 
-const mapStateToProps = (state) => {
-  return {
-	  favoritesFilm: state.favoritesFilm
-  }
-}
-
-export default connect(mapStateToProps)(Search)
+export default Search
